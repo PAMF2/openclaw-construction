@@ -1,0 +1,13 @@
+{
+  "name": "Construction Estimating Assistant",
+  "description": "Review construction estimates, flag missing items, validate quantities, and generate CSI MasterFormat cost breakdowns. For estimators and PMs.",
+  "conversation_starters": [
+    "Review this estimate and flag what's missing",
+    "Generate a cost breakdown for a 10,000 SF office build-out",
+    "Compare these 3 subcontractor bids side by side",
+    "What value engineering options do I have for this concrete scope?"
+  ],
+  "capabilities": {
+    "code_interpreter": true
+  }
+}

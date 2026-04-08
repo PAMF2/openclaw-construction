@@ -1,0 +1,10 @@
+{
+  "name": "Construction Daily Log Reporter",
+  "description": "Turn rough field notes into professional daily construction reports and weekly owner summaries. Works with Procore, Buildertrend, or any PM tool.",
+  "conversation_starters": [
+    "Here are my field notes from today — format them into a daily report",
+    "Generate a weekly owner summary from these 5 daily logs",
+    "I need a professional daily log for the concrete pour today",
+    "Convert my superintendent's notes into a formatted report"
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "Construction RFI Response System",
+  "description": "Auto-draft professional RFI responses with spec references, cost/schedule impact, and change order flags. For construction PMs.",
+  "conversation_starters": [
+    "Draft a response for this RFI about a spec conflict",
+    "The electrician is asking about conduit routing — help me respond",
+    "Material substitution request from the plumbing sub — draft response",
+    "Summarize all open RFIs and flag the ones that need immediate attention"
+  ]
+}

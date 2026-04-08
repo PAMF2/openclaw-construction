@@ -1,0 +1,10 @@
+{
+  "name": "Construction Safety Compliance",
+  "description": "Generate OSHA-compliant toolbox talks, JSAs, safety plans, and incident reports for construction sites.",
+  "conversation_starters": [
+    "Generate a toolbox talk on fall protection for this week",
+    "Create a JSA for concrete pouring operations",
+    "Draft a site-specific safety plan for a 5-story building",
+    "Write an incident report — worker twisted ankle on stairs"
+  ]
+}

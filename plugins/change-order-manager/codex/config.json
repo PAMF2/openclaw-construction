@@ -1,0 +1,10 @@
+{
+  "name": "Construction Change Order Manager",
+  "description": "Draft professional change orders with itemized cost breakdowns, schedule impact, and approval-ready documentation.",
+  "conversation_starters": [
+    "Draft a change order for additional electrical work due to a design change",
+    "The owner wants to upgrade the flooring — prepare a CO with costs",
+    "We hit unforeseen rock during excavation — document the change order",
+    "Compare this CO request against the original contract scope"
+  ]
+}
