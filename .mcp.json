@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "procore": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@openclaw/procore-mcp"
+      ],
+      "env": {
+        "PROCORE_CLIENT_ID": "",
+        "PROCORE_CLIENT_SECRET": "",
+        "PROCORE_COMPANY_ID": "",
+        "PROCORE_ACCESS_TOKEN": "",
+        "PROCORE_REFRESH_TOKEN": ""
+      }
+    }
+  }
+}
