@@ -39,7 +39,7 @@ Add to your config:
   "mcpServers": {
     "procore": {
       "command": "npx",
-      "args": ["-y", "@openclaw/procore-mcp"],
+      "args": ["-y", "procore-mcp"],
       "env": {
         "PROCORE_CLIENT_ID": "your-client-id",
         "PROCORE_CLIENT_SECRET": "your-client-secret",

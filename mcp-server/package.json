@@ -1,5 +1,5 @@
 {
-  "name": "@openclaw/procore-mcp",
+  "name": "procore-mcp",
   "version": "1.0.0",
   "description": "MCP server for Procore Construction Management — RFIs, daily logs, change orders, safety, budgets via Claude",
   "type": "module",
@@ -26,7 +26,7 @@
     "construction",
     "project-management"
   ],
-  "author": "OpenClaw",
+  "author": "",
   "license": "MIT",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",

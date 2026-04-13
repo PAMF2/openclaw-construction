@@ -1,9 +1,7 @@
 {
-  "name": "openclaw-construction",
+  "name": "construction-ai-plugins",
   "version": "1.0.0",
   "description": "AI plugins for construction professionals — RFI responses, daily logs, estimating, change orders, and safety compliance",
-  "author": "OpenClaw",
-  "homepage": "https://openclaw.ai",
   "skills": [
     "plugins/rfi-response-system/SKILL.md",
     "plugins/daily-log-reporter/SKILL.md",

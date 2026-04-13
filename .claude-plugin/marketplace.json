@@ -1,0 +1,32 @@
+{
+  "listing": {
+    "title": "Construction AI Suite — RFIs, Daily Logs, Estimating",
+    "shortDescription": "5 AI plugins for construction PMs. RFI responses, daily log reports, cost estimating, change order management, and safety compliance.",
+    "longDescription": "The Construction AI Suite equips project managers and superintendents with AI workflows built for the job site. RFI Response System drafts technically precise RFI answers and syncs with Procore; Daily Log Reporter converts field notes into formatted daily logs and progress photos summaries; Estimating Assistant builds line-item cost estimates from scope descriptions; Change Order Manager generates change order packages with justification and markup calculations; and Safety Compliance produces toolbox talk scripts, incident reports, and OSHA-aligned checklists. Each plugin ships with a system prompt tuned for construction terminology and a Codex config for Shopify-compatible delivery.",
+    "category": "productivity",
+    "tags": [
+      "construction",
+      "procore",
+      "rfi",
+      "daily-log",
+      "estimating",
+      "change-orders",
+      "safety",
+      "project-management"
+    ],
+    "screenshots": [],
+    "pricing": {
+      "model": "paid",
+      "priceRange": "$99-199"
+    }
+  },
+  "compatibility": {
+    "platforms": [
+      "claude-code",
+      "codex",
+      "perplexity",
+      "manus"
+    ],
+    "minVersion": "1.0.0"
+  },
+}
