@@ -76,28 +76,23 @@ async function procoreRequest<T = unknown>(
     }
   }
 
-  let res = await fetch(url.toString(), {
-    method: opts.method ?? "GET",
+  const serializedBody = opts.body ? JSON.stringify(opts.body) : undefined;
+  const method = opts.method ?? "GET";
+  const makeFetchOpts = () => ({
+    method,
     headers: {
       Authorization: `Bearer ${accessToken}`,
       "Content-Type": "application/json",
       "Procore-Company-Id": COMPANY_ID ?? "",
     },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    body: serializedBody,
   });
 
   // Auto-refresh on 401
+  let res = await fetch(url.toString(), makeFetchOpts());
   if (res.status === 401) {
     await refreshAccessToken();
-    res = await fetch(url.toString(), {
-      method: opts.method ?? "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "Procore-Company-Id": COMPANY_ID ?? "",
-      },
-      body: opts.body ? JSON.stringify(opts.body) : undefined,
-    });
+    res = await fetch(url.toString(), makeFetchOpts());
   }
 
   if (!res.ok) {
@@ -106,6 +101,26 @@ async function procoreRequest<T = unknown>(
   }
 
   return res.json() as Promise<T>;
+}
+
+// --- Response Helpers -----------------------------------------------------
+
+function mcpSuccess(data: unknown) {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+  };
+}
+
+function mcpError(error: unknown) {
+  return {
+    content: [
+      {
+        type: "text" as const,
+        text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+      },
+    ],
+    isError: true as const,
+  };
 }
 
 // --- MCP Server -----------------------------------------------------------
@@ -139,22 +154,9 @@ server.registerTool(
     try {
       const params: Record<string, string> = {};
       if (status && status !== "all") params["filters[status]"] = status;
-      const data = await procoreRequest({ path: "/projects", params });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(await procoreRequest({ path: "/projects", params }));
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -187,25 +189,14 @@ server.registerTool(
       if (status && status !== "all") params["filters[status]"] = status;
       if (responsibleContractor)
         params["filters[responsible_contractor]"] = responsibleContractor;
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/rfis`,
-        params,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/rfis`,
+          params,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -226,24 +217,13 @@ server.registerTool(
   },
   async ({ projectId, rfiId }) => {
     try {
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/rfis/${rfiId}`,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/rfis/${rfiId}`,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -266,26 +246,15 @@ server.registerTool(
   },
   async ({ projectId, rfiId, body }) => {
     try {
-      const data = await procoreRequest({
-        method: "POST",
-        path: `/projects/${projectId}/rfis/${rfiId}/replies`,
-        body: { reply: { body } },
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          method: "POST",
+          path: `/projects/${projectId}/rfis/${rfiId}/replies`,
+          body: { reply: { body } },
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -309,26 +278,15 @@ server.registerTool(
   },
   async ({ projectId, date, notes }) => {
     try {
-      const data = await procoreRequest({
-        method: "POST",
-        path: `/projects/${projectId}/daily_logs/notes_logs`,
-        body: { notes_log: { date, notes } },
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          method: "POST",
+          path: `/projects/${projectId}/daily_logs/notes_logs`,
+          body: { notes_log: { date, notes } },
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -350,28 +308,17 @@ server.registerTool(
   },
   async ({ projectId, startDate, endDate }) => {
     try {
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/daily_logs/notes_logs`,
-        params: {
-          "filters[date_min]": startDate,
-          "filters[date_max]": endDate,
-        },
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
-    } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/daily_logs/notes_logs`,
+          params: {
+            "filters[date_min]": startDate,
+            "filters[date_max]": endDate,
           },
-        ],
-        isError: true,
-      };
+        }),
+      );
+    } catch (error) {
+      return mcpError(error);
     }
   },
 );
@@ -392,25 +339,14 @@ server.registerTool(
   },
   async ({ projectId, date }) => {
     try {
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/daily_logs/manpower_logs`,
-        params: { "filters[date]": date },
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/daily_logs/manpower_logs`,
+          params: { "filters[date]": date },
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -436,25 +372,14 @@ server.registerTool(
     try {
       const params: Record<string, string> = {};
       if (status && status !== "all") params["filters[status]"] = status;
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/change_order_requests`,
-        params,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/change_order_requests`,
+          params,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -508,26 +433,15 @@ server.registerTool(
           ...(scheduleDaysImpact && { schedule_impact: scheduleDaysImpact }),
         },
       };
-      const data = await procoreRequest({
-        method: "POST",
-        path: `/projects/${projectId}/change_order_requests`,
-        body,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          method: "POST",
+          path: `/projects/${projectId}/change_order_requests`,
+          body,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -569,26 +483,15 @@ server.registerTool(
           ...(tradeId && { trade_id: tradeId }),
         },
       };
-      const data = await procoreRequest({
-        method: "POST",
-        path: `/projects/${projectId}/observations/items`,
-        body,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          method: "POST",
+          path: `/projects/${projectId}/observations/items`,
+          body,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -608,24 +511,13 @@ server.registerTool(
   },
   async ({ projectId }) => {
     try {
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/budget/views`,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/budget/views`,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -649,25 +541,14 @@ server.registerTool(
     try {
       const params: Record<string, string | number> = { per_page: limit };
       if (status && status !== "all") params["filters[status]"] = status;
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/submittals`,
-        params,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/submittals`,
+          params,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -690,25 +571,14 @@ server.registerTool(
     try {
       const params: Record<string, string> = {};
       if (status && status !== "all") params["filters[status]"] = status;
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/punch_items`,
-        params,
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/punch_items`,
+          params,
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
@@ -729,25 +599,14 @@ server.registerTool(
   },
   async ({ projectId, date }) => {
     try {
-      const data = await procoreRequest({
-        path: `/projects/${projectId}/daily_logs/weather_logs`,
-        params: { "filters[date]": date },
-      });
-      return {
-        content: [
-          { type: "text" as const, text: JSON.stringify(data, null, 2) },
-        ],
-      };
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/projects/${projectId}/daily_logs/weather_logs`,
+          params: { "filters[date]": date },
+        }),
+      );
     } catch (error) {
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: `Error: ${error instanceof Error ? error.message : String(error)}`,
-          },
-        ],
-        isError: true,
-      };
+      return mcpError(error);
     }
   },
 );
