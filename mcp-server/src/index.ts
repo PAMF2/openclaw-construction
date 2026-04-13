@@ -3,12 +3,6 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-// ============================================================
-// Procore MCP Server
-// Connects Claude to Procore Construction Management via REST API
-// Docs: https://developers.procore.com/documentation/introduction
-// ============================================================
-
 const CLIENT_ID = process.env.PROCORE_CLIENT_ID;
 const CLIENT_SECRET = process.env.PROCORE_CLIENT_SECRET;
 const COMPANY_ID = process.env.PROCORE_COMPANY_ID;
@@ -26,8 +20,6 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
 
 const BASE_URL = "https://api.procore.com/rest/v1.0";
 const AUTH_URL = "https://login.procore.com/oauth/token";
-
-// --- Token Refresh ---------------------------------------------------------
 
 async function refreshAccessToken(): Promise<void> {
   if (!refreshToken) {
@@ -56,8 +48,6 @@ async function refreshAccessToken(): Promise<void> {
   refreshToken = data.refresh_token;
   console.error("Procore access token refreshed successfully");
 }
-
-// --- API Client -----------------------------------------------------------
 
 interface ProcoreRequestOptions {
   method?: string;
@@ -88,7 +78,6 @@ async function procoreRequest<T = unknown>(
     body: serializedBody,
   });
 
-  // Auto-refresh on 401
   let res = await fetch(url.toString(), makeFetchOpts());
   if (res.status === 401) {
     await refreshAccessToken();
@@ -102,8 +91,6 @@ async function procoreRequest<T = unknown>(
 
   return res.json() as Promise<T>;
 }
-
-// --- Response Helpers -----------------------------------------------------
 
 function mcpSuccess(data: unknown) {
   return {
@@ -123,8 +110,6 @@ function mcpError(error: unknown) {
   };
 }
 
-// --- MCP Server -----------------------------------------------------------
-
 const server = new McpServer(
   { name: "procore-mcp", version: "1.0.0" },
   {
@@ -134,8 +119,6 @@ const server = new McpServer(
       "Tools cover RFIs, daily logs, change orders, safety observations, and budgets.",
   },
 );
-
-// --- TOOL: List Projects --------------------------------------------------
 
 server.registerTool(
   "list_projects",
@@ -160,8 +143,6 @@ server.registerTool(
     }
   },
 );
-
-// --- TOOL: List RFIs ------------------------------------------------------
 
 server.registerTool(
   "list_rfis",
@@ -201,8 +182,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: Get RFI Detail -------------------------------------------------
-
 server.registerTool(
   "get_rfi",
   {
@@ -227,8 +206,6 @@ server.registerTool(
     }
   },
 );
-
-// --- TOOL: Create RFI Response --------------------------------------------
 
 server.registerTool(
   "create_rfi_response",
@@ -258,8 +235,6 @@ server.registerTool(
     }
   },
 );
-
-// --- TOOL: Create Daily Log -----------------------------------------------
 
 server.registerTool(
   "create_daily_log",
@@ -291,8 +266,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: List Daily Logs ------------------------------------------------
-
 server.registerTool(
   "list_daily_logs",
   {
@@ -323,8 +296,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: Get Manpower Log -----------------------------------------------
-
 server.registerTool(
   "get_manpower_log",
   {
@@ -350,8 +321,6 @@ server.registerTool(
     }
   },
 );
-
-// --- TOOL: List Change Orders ---------------------------------------------
 
 server.registerTool(
   "list_change_orders",
@@ -384,8 +353,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: Create Change Order Request ------------------------------------
-
 server.registerTool(
   "create_change_order_request",
   {
@@ -403,11 +370,15 @@ server.registerTool(
         .optional()
         .describe("Estimated cost impact in dollars"),
       changeReason: z
-        .string()
+        .enum([
+          "owner_change",
+          "design_error",
+          "field_condition",
+          "code_change",
+          "value_engineering",
+        ])
         .optional()
-        .describe(
-          "Reason: owner_change, design_error, field_condition, code_change, value_engineering",
-        ),
+        .describe("Reason for the change order"),
       scheduleDaysImpact: z
         .number()
         .optional()
@@ -445,8 +416,6 @@ server.registerTool(
     }
   },
 );
-
-// --- TOOL: Create Safety Observation --------------------------------------
 
 server.registerTool(
   "create_observation",
@@ -496,8 +465,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: Get Project Budget ---------------------------------------------
-
 server.registerTool(
   "get_budget",
   {
@@ -521,8 +488,6 @@ server.registerTool(
     }
   },
 );
-
-// --- TOOL: List Submittals ------------------------------------------------
 
 server.registerTool(
   "list_submittals",
@@ -553,8 +518,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: List Punch List Items ------------------------------------------
-
 server.registerTool(
   "list_punch_items",
   {
@@ -583,8 +546,6 @@ server.registerTool(
   },
 );
 
-// --- TOOL: Get Weather Log ------------------------------------------------
-
 server.registerTool(
   "get_weather_log",
   {
@@ -610,8 +571,6 @@ server.registerTool(
     }
   },
 );
-
-// --- PROMPT: Weekly Owner Report ------------------------------------------
 
 server.registerPrompt(
   "weekly-owner-report",
@@ -653,8 +612,6 @@ server.registerPrompt(
   }),
 );
 
-// --- PROMPT: RFI Draft Response -------------------------------------------
-
 server.registerPrompt(
   "draft-rfi-response",
   {
@@ -686,8 +643,6 @@ server.registerPrompt(
     ],
   }),
 );
-
-// --- Start Server ---------------------------------------------------------
 
 async function main() {
   const transport = new StdioServerTransport();
