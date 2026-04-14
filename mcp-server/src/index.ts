@@ -18,9 +18,11 @@ if (!CLIENT_ID || !CLIENT_SECRET) {
   process.exit(1);
 }
 
-const BASE_URL = "https://api.procore.com/rest/v1.0";
+const BASE_URL = "https://api.procore.com/rest/v2.0";
 const AUTH_URL = "https://login.procore.com/oauth/token";
 
+// Note: v2 access tokens have a 15-minute lifetime (reduced from 90min in v1).
+// The refresh logic below already handles this correctly via the 401 retry in procoreRequest.
 async function refreshAccessToken(): Promise<void> {
   if (!refreshToken) {
     throw new Error(
@@ -89,7 +91,9 @@ async function procoreRequest<T = unknown>(
     throw new Error(`Procore API ${res.status}: ${text}`);
   }
 
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  // v2 wraps responses in { data: ... }
+  return (json.data !== undefined ? json.data : json) as T;
 }
 
 function mcpSuccess(data: unknown) {
@@ -135,9 +139,14 @@ server.registerTool(
   },
   async ({ status }) => {
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string | number> = { per_page: 100 };
       if (status && status !== "all") params["filters[status]"] = status;
-      return mcpSuccess(await procoreRequest({ path: "/projects", params }));
+      return mcpSuccess(
+        await procoreRequest({
+          path: `/companies/${COMPANY_ID}/projects`,
+          params,
+        }),
+      );
     } catch (error) {
       return mcpError(error);
     }
@@ -151,7 +160,7 @@ server.registerTool(
     description:
       "List RFIs for a project. Filter by status (open, closed, draft) or responsible party.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       status: z
         .enum(["open", "closed", "draft", "all"])
         .optional()
@@ -166,13 +175,15 @@ server.registerTool(
   },
   async ({ projectId, status, responsibleContractor, limit }) => {
     try {
-      const params: Record<string, string | number> = { per_page: limit };
+      const params: Record<string, string | number> = {
+        per_page: limit ?? 100,
+      };
       if (status && status !== "all") params["filters[status]"] = status;
       if (responsibleContractor)
         params["filters[responsible_contractor]"] = responsibleContractor;
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/rfis`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/rfis`,
           params,
         }),
       );
@@ -189,8 +200,8 @@ server.registerTool(
     description:
       "Get full details for a specific RFI including questions, responses, attachments, and history.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
-      rfiId: z.number().describe("RFI ID"),
+      projectId: z.string().describe("Procore project ID"),
+      rfiId: z.string().describe("RFI ID"),
     },
     annotations: { destructiveHint: false, idempotentHint: true },
   },
@@ -198,7 +209,7 @@ server.registerTool(
     try {
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/rfis/${rfiId}`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/rfis/${rfiId}`,
         }),
       );
     } catch (error) {
@@ -213,8 +224,8 @@ server.registerTool(
     title: "Create RFI Response",
     description: "Submit a response to an open RFI in Procore.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
-      rfiId: z.number().describe("RFI ID to respond to"),
+      projectId: z.string().describe("Procore project ID"),
+      rfiId: z.string().describe("RFI ID to respond to"),
       body: z
         .string()
         .describe("Response text — the actual answer to the RFI question"),
@@ -226,7 +237,7 @@ server.registerTool(
       return mcpSuccess(
         await procoreRequest({
           method: "POST",
-          path: `/projects/${projectId}/rfis/${rfiId}/replies`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/rfis/${rfiId}/replies`,
           body: { reply: { body } },
         }),
       );
@@ -243,7 +254,7 @@ server.registerTool(
     description:
       "Create or update a daily log entry in Procore with notes about the day's work.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       date: z.string().describe("Date in YYYY-MM-DD format"),
       notes: z
         .string()
@@ -256,7 +267,7 @@ server.registerTool(
       return mcpSuccess(
         await procoreRequest({
           method: "POST",
-          path: `/projects/${projectId}/daily_logs/notes_logs`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/daily_logs/notes_logs`,
           body: { notes_log: { date, notes } },
         }),
       );
@@ -273,7 +284,7 @@ server.registerTool(
     description:
       "List daily log entries for a project within a date range. Useful for generating weekly summaries.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       startDate: z.string().describe("Start date YYYY-MM-DD"),
       endDate: z.string().describe("End date YYYY-MM-DD"),
     },
@@ -283,8 +294,9 @@ server.registerTool(
     try {
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/daily_logs/notes_logs`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/daily_logs/notes_logs`,
           params: {
+            per_page: 100,
             "filters[date_min]": startDate,
             "filters[date_max]": endDate,
           },
@@ -303,7 +315,7 @@ server.registerTool(
     description:
       "Get workforce/headcount data for a specific date — trade breakdown and hours.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       date: z.string().describe("Date YYYY-MM-DD"),
     },
     annotations: { destructiveHint: false, idempotentHint: true },
@@ -312,8 +324,8 @@ server.registerTool(
     try {
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/daily_logs/manpower_logs`,
-          params: { "filters[date]": date },
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/daily_logs/manpower_logs`,
+          params: { per_page: 100, "filters[date]": date },
         }),
       );
     } catch (error) {
@@ -329,7 +341,7 @@ server.registerTool(
     description:
       "List all change order requests for a project. Includes status, amount, and reason.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       status: z
         .enum(["pending", "approved", "rejected", "all"])
         .optional()
@@ -339,11 +351,11 @@ server.registerTool(
   },
   async ({ projectId, status }) => {
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string | number> = { per_page: 100 };
       if (status && status !== "all") params["filters[status]"] = status;
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/change_order_requests`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/change_order_requests`,
           params,
         }),
       );
@@ -360,7 +372,7 @@ server.registerTool(
     description:
       "Create a new change order request (PCO) in Procore with cost and schedule impact.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       title: z.string().describe("Change order title"),
       description: z
         .string()
@@ -407,7 +419,7 @@ server.registerTool(
       return mcpSuccess(
         await procoreRequest({
           method: "POST",
-          path: `/projects/${projectId}/change_order_requests`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/change_order_requests`,
           body,
         }),
       );
@@ -424,7 +436,7 @@ server.registerTool(
     description:
       "Log a safety observation or hazard in Procore. Use for toolbox talk follow-ups or field findings.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       title: z.string().describe("Observation title"),
       description: z
         .string()
@@ -437,7 +449,7 @@ server.registerTool(
         .enum(["positive", "negative", "neutral"])
         .optional()
         .default("negative"),
-      tradeId: z.number().optional().describe("Trade/vendor ID responsible"),
+      tradeId: z.string().optional().describe("Trade/vendor ID responsible"),
     },
     annotations: { destructiveHint: false, idempotentHint: false },
   },
@@ -455,7 +467,7 @@ server.registerTool(
       return mcpSuccess(
         await procoreRequest({
           method: "POST",
-          path: `/projects/${projectId}/observations/items`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/observations/items`,
           body,
         }),
       );
@@ -472,7 +484,7 @@ server.registerTool(
     description:
       "Get the current budget summary for a project — original budget, changes, revised budget, costs to date.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
     },
     annotations: { destructiveHint: false, idempotentHint: true },
   },
@@ -480,7 +492,7 @@ server.registerTool(
     try {
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/budget/views`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/budget/views`,
         }),
       );
     } catch (error) {
@@ -496,7 +508,7 @@ server.registerTool(
     description:
       "List submittals for a project. Useful for referencing when drafting RFI responses.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       status: z.enum(["open", "closed", "all"]).optional().default("all"),
       limit: z.number().optional().default(25),
     },
@@ -504,11 +516,13 @@ server.registerTool(
   },
   async ({ projectId, status, limit }) => {
     try {
-      const params: Record<string, string | number> = { per_page: limit };
+      const params: Record<string, string | number> = {
+        per_page: limit ?? 100,
+      };
       if (status && status !== "all") params["filters[status]"] = status;
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/submittals`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/submittals`,
           params,
         }),
       );
@@ -525,18 +539,18 @@ server.registerTool(
     description:
       "List punch list items for a project — open items that need correction before closeout.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       status: z.enum(["open", "closed", "all"]).optional().default("open"),
     },
     annotations: { destructiveHint: false, idempotentHint: true },
   },
   async ({ projectId, status }) => {
     try {
-      const params: Record<string, string> = {};
+      const params: Record<string, string | number> = { per_page: 100 };
       if (status && status !== "all") params["filters[status]"] = status;
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/punch_items`,
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/punch_items`,
           params,
         }),
       );
@@ -553,7 +567,7 @@ server.registerTool(
     description:
       "Get weather conditions recorded in Procore for a specific date.",
     inputSchema: {
-      projectId: z.number().describe("Procore project ID"),
+      projectId: z.string().describe("Procore project ID"),
       date: z.string().describe("Date YYYY-MM-DD"),
     },
     annotations: { destructiveHint: false, idempotentHint: true },
@@ -562,8 +576,8 @@ server.registerTool(
     try {
       return mcpSuccess(
         await procoreRequest({
-          path: `/projects/${projectId}/daily_logs/weather_logs`,
-          params: { "filters[date]": date },
+          path: `/companies/${COMPANY_ID}/projects/${projectId}/daily_logs/weather_logs`,
+          params: { per_page: 100, "filters[date]": date },
         }),
       );
     } catch (error) {
